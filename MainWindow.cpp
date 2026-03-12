@@ -112,6 +112,12 @@ QMap<QString, QVector<int>> MainWindow::loadModesFromJson(const QJsonDocument& d
       }
 
       modesMap[name] = notes;
+      QPushButton* modeButton = new QPushButton(name, ui->modesGroupBox);
+      ui->modesGroupBox->layout()->addWidget(modeButton);
+
+      connect(modeButton, &QPushButton::clicked, this, [this, name]() {
+         setMode(name);
+      });
    }
 
    return modesMap;
@@ -126,32 +132,12 @@ void MainWindow::loadModes()
       m_modes = loadModesFromJson(doc);
       file.close();
    }
-
-   QVBoxLayout* layout = new QVBoxLayout(ui->modesGroupBox);
-   layout->setContentsMargins(10, 10, 10, 10);
-   layout->setSpacing(5);
-
-   for (auto it = m_modes.constBegin(); it != m_modes.constEnd(); ++it) {
-      QString modeName = it.key();
-      QPushButton* modeButton = new QPushButton(modeName, ui->modesGroupBox);
-      layout->addWidget(modeButton);
-
-      connect(modeButton, &QPushButton::clicked, this, [this, modeName]() {
-         setMode(modeName);
-      });
-   }
-
-   layout->addStretch();
 }
 
 
 void MainWindow::setMode(const QString& modeName)
 {
-   for (int i = 0; i < m_checkboxes.size(); ++i)
-   {
-      m_checkboxes[i]->setChecked(false);
-      scene->changeNote(i, false);
-   }
+   on_pushButton_clicked();
 
    QVector<int> modeNotes = m_modes[modeName];
    for (int noteIndex : modeNotes)
@@ -161,6 +147,16 @@ void MainWindow::setMode(const QString& modeName)
          ui->buttonGroup->button(noteIndex)->setChecked(true);
          scene->changeNote(noteIndex, true);
       }
+   }
+}
+
+
+void MainWindow::on_pushButton_clicked()
+{
+   for (int i = 0; i < m_checkboxes.size(); ++i)
+   {
+      m_checkboxes[i]->setChecked(false);
+      scene->changeNote(i, false);
    }
 }
 
