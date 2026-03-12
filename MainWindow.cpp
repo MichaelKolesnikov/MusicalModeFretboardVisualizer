@@ -11,10 +11,9 @@
 #include <QFile>
 #include <QPushButton>
 
-
 MainWindow::MainWindow(QWidget *parent)
    : QMainWindow(parent)
-   , ui(new Ui::MainWindow), m_noteNames(12), m_labels(12)
+   , ui(new Ui::MainWindow), m_labels(12)
 {
    ui->setupUi(this);
 
@@ -30,18 +29,6 @@ MainWindow::MainWindow(QWidget *parent)
       ui->buttonGroup->setId(m_checkboxes[i], i);
    }
 
-   m_noteNames[A] = "A";
-   m_noteNames[Ad] = "A#";
-   m_noteNames[B] = "B";
-   m_noteNames[C] = "C";
-   m_noteNames[Cd] = "C#";
-   m_noteNames[D] = "D";
-   m_noteNames[Dd] = "D#";
-   m_noteNames[E] = "E";
-   m_noteNames[F] = "F";
-   m_noteNames[Fd] = "F#";
-   m_noteNames[G] = "G";
-   m_noteNames[Gd] = "G#";
    m_labels[0] = ui->label;
    m_labels[1] = ui->label_2;
    m_labels[2] = ui->label_3;
@@ -84,7 +71,7 @@ void MainWindow::updateLabels(int tonic)
 {
    for (int i = 0; i < 12; ++i)
    {
-      m_labels[i]->setText(m_noteNames[(tonic + i) % 12]);
+      m_labels[i]->setText(noteNames[(tonic + i) % 12]);
    }
 }
 

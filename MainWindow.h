@@ -31,7 +31,6 @@ private:
 
    Ui::MainWindow *ui;
    FretboardScene* scene;
-   QVector<QString> m_noteNames;
    QVector<QLabel*> m_labels;
    QVector<QAbstractButton*> m_checkboxes;
    QMap<QString, QVector<int>> m_modes;

@@ -7,9 +7,9 @@ FretboardScene::FretboardScene(QObject *parent)
    : QGraphicsScene{parent}, m_noteToPoints(12), m_tonic(0), m_isNoteChosen(12, false)
 {
    qreal fretboardLength = 2048;
-   qreal height = 200;
+   qreal height = 400;
    int fretCount = 25;
-   qreal ellipseSize = 10;
+   qreal ellipseSize = 16;
 
    qreal indentation = height / 20;
    qreal heightForStrings = height - 2 * indentation;
@@ -33,13 +33,18 @@ FretboardScene::FretboardScene(QObject *parent)
    // frets painting
    qreal currentFrequency = stringsFrequencies[0];
    qreal previousX = 0, length, x;
-   qreal fretNumbersY = -height / 4;
+   qreal fretNumbersY = -indentation * 2;
    for (int fretNumber = 1; fretNumber < fretCount; ++fretNumber)
    {
       currentFrequency = semitoneUp(currentFrequency);
       length = stringsConstants[0] / (2 * currentFrequency);
       x = fretboardLength - length;
-      addLine(x, 0, x, height, QPen(QColor(180, 180, 180), 2));
+      QLinearGradient fretGradient(x, 0, x, height);
+      fretGradient.setColorAt(0.0, QColor(240, 240, 240));
+      fretGradient.setColorAt(0.3, QColor(190, 190, 190));
+      fretGradient.setColorAt(0.7, QColor(140, 140, 140));
+      fretGradient.setColorAt(1.0, QColor(100, 100, 100));
+      addLine(x, 0, x, height, QPen(QBrush(fretGradient), 2));
       auto textItem = addText(QString::number(fretNumber));
       textItem->setPos((x + previousX) / 2 - textItem->boundingRect().width() / 2, fretNumbersY);
       if (hasFretMarker(fretNumber))
@@ -90,6 +95,8 @@ FretboardScene::FretboardScene(QObject *parent)
          m_noteToPoints[currentNote].append(
             addEllipse((x + previousX) / 2 - ellipseSize / 2, currentStringHeight - ellipseSize / 2, ellipseSize, ellipseSize, QPen(), Qt::red)
          );
+         auto textItem = addText(noteNames[currentNote]);
+         textItem->setPos(x - textItem->boundingRect().width(), currentStringHeight - textItem->boundingRect().height());
          previousX = x;
       }
 
