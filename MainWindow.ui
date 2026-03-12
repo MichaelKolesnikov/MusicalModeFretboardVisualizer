@@ -101,7 +101,7 @@
        </item>
       </widget>
      </item>
-     <item row="1" column="0">
+     <item row="2" column="0">
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="2" column="0">
         <widget class="QCheckBox" name="checkBox_3">
@@ -308,6 +308,13 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item row="1" column="0">
+      <widget class="QGroupBox" name="modesGroupBox">
+       <property name="title">
+        <string>ReadyModes</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>

@@ -1,8 +1,16 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
-#include <iostream>
 #include "FretboardScene.h"
 #include "GuitarNoteLetter.h"
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QMap>
+#include <QVector>
+#include <QString>
+#include <QFile>
+#include <QPushButton>
+
 
 MainWindow::MainWindow(QWidget *parent)
    : QMainWindow(parent)
@@ -10,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
    ui->setupUi(this);
 
-   auto v = QVector<QAbstractButton*>(
+   m_checkboxes = QVector<QAbstractButton*>(
       {
          ui->checkBox, ui->checkBox_2, ui->checkBox_3, ui->checkBox_4,
          ui->checkBox_5, ui->checkBox_6, ui->checkBox_7, ui->checkBox_8,
@@ -19,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
    );
    for (int i = 0; i < 12; ++i)
    {
-      ui->buttonGroup->setId(v[i], i);
+      ui->buttonGroup->setId(m_checkboxes[i], i);
    }
 
    m_noteNames[A] = "A";
@@ -56,6 +64,8 @@ MainWindow::MainWindow(QWidget *parent)
       bool isNoteChosen = ui->buttonGroup->button(noteNumber)->isChecked();
       scene->changeNote(noteNumber, isNoteChosen);
    });
+
+   loadModes();
 }
 
 MainWindow::~MainWindow()
@@ -75,6 +85,82 @@ void MainWindow::updateLabels(int tonic)
    for (int i = 0; i < 12; ++i)
    {
       m_labels[i]->setText(m_noteNames[(tonic + i) % 12]);
+   }
+}
+
+QMap<QString, QVector<int>> MainWindow::loadModesFromJson(const QJsonDocument& doc)
+{
+   QMap<QString, QVector<int>> modesMap;
+
+   if (!doc.isObject()) return modesMap;
+
+   QJsonObject obj = doc.object();
+   if (!obj.contains("modes")) return modesMap;
+
+   QJsonArray modesArray = obj["modes"].toArray();
+
+   for (const QJsonValue& modeValue : modesArray) {
+      if (!modeValue.isObject()) continue;
+
+      QJsonObject modeObj = modeValue.toObject();
+      QString name = modeObj["name"].toString();
+      QJsonArray notesArray = modeObj["notes"].toArray();
+
+      QVector<int> notes;
+      for (const QJsonValue& noteValue : notesArray) {
+         notes.append(noteValue.toInt());
+      }
+
+      modesMap[name] = notes;
+   }
+
+   return modesMap;
+}
+
+void MainWindow::loadModes()
+{
+   QFile file(":/modes.json");
+   if (file.open(QIODevice::ReadOnly)) {
+      QByteArray data = file.readAll();
+      QJsonDocument doc = QJsonDocument::fromJson(data);
+      m_modes = loadModesFromJson(doc);
+      file.close();
+   }
+
+   QVBoxLayout* layout = new QVBoxLayout(ui->modesGroupBox);
+   layout->setContentsMargins(10, 10, 10, 10);
+   layout->setSpacing(5);
+
+   for (auto it = m_modes.constBegin(); it != m_modes.constEnd(); ++it) {
+      QString modeName = it.key();
+      QPushButton* modeButton = new QPushButton(modeName, ui->modesGroupBox);
+      layout->addWidget(modeButton);
+
+      connect(modeButton, &QPushButton::clicked, this, [this, modeName]() {
+         setMode(modeName);
+      });
+   }
+
+   layout->addStretch();
+}
+
+
+void MainWindow::setMode(const QString& modeName)
+{
+   for (int i = 0; i < m_checkboxes.size(); ++i)
+   {
+      m_checkboxes[i]->setChecked(false);
+      scene->changeNote(i, false);
+   }
+
+   QVector<int> modeNotes = m_modes[modeName];
+   for (int noteIndex : modeNotes)
+   {
+      if (noteIndex < 12)
+      {
+         ui->buttonGroup->button(noteIndex)->setChecked(true);
+         scene->changeNote(noteIndex, true);
+      }
    }
 }
 
