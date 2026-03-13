@@ -1,7 +1,8 @@
 #include "FretboardScene.h"
-#include "GuitarNote.h"
+#include "Note.h"
 #include <QGraphicsTextItem>
 #include <QGraphicsEllipseItem>
+#include "PianoItem.h"
 
 FretboardScene::FretboardScene(QObject *parent)
    : QGraphicsScene{parent}, m_noteToPoints(12), m_tonic(0), m_isNoteChosen(12, false)
@@ -15,7 +16,7 @@ FretboardScene::FretboardScene(QObject *parent)
    qreal heightForStrings = height - 2 * indentation;
    qreal move = heightForStrings / 5;
 
-   QVector<int> stringsNotes = {E, B, G, D, A, E};
+   QVector<int> stringsNotes = {NoteLetter::E, NoteLetter::B, NoteLetter::G, NoteLetter::D, NoteLetter::A, NoteLetter::E};
    QVector<qreal> stringsFrequencies = {329.63, 246.94, 196.00, 146.82, 110.00, 82.41};
    // frequency = sqrt(tension / linearDensity) / (2 * length) = stringConstant / (2 * length)
    QVector<qreal> stringsConstants;
@@ -47,11 +48,11 @@ FretboardScene::FretboardScene(QObject *parent)
       addLine(x, 0, x, height, QPen(QBrush(fretGradient), 2));
       auto textItem = addText(QString::number(fretNumber));
       textItem->setPos((x + previousX) / 2 - textItem->boundingRect().width() / 2, fretNumbersY);
-      if (hasFretMarker(fretNumber))
+      if (fretNumber % 2 && fretNumber % NoteLetter::count % 10 != 1)
       {
          addEllipse((x + previousX) / 2 - ellipseSize / 2, height / 2 - ellipseSize / 2, ellipseSize, ellipseSize, QPen(), Qt::black);
       }
-      else if (fretNumber == 12)
+      else if (fretNumber % NoteLetter::count == 0)
       {
          qreal ellipseY = indentation + move / 2;
          addEllipse((x + previousX) / 2 - ellipseSize / 2, ellipseY - ellipseSize / 2, ellipseSize, ellipseSize, QPen(), Qt::black);
@@ -95,14 +96,19 @@ FretboardScene::FretboardScene(QObject *parent)
          m_noteToPoints[currentNote].append(
             addEllipse((x + previousX) / 2 - ellipseSize / 2, currentStringHeight - ellipseSize / 2, ellipseSize, ellipseSize, QPen(), Qt::red)
          );
-         auto textItem = addText(noteNames[currentNote]);
+         auto textItem = addText(NoteLetter(currentNote).name());
          textItem->setPos(x - textItem->boundingRect().width(), currentStringHeight - textItem->boundingRect().height());
          previousX = x;
       }
 
       currentStringHeight += move;
    }
-   hideAllPoints();
+
+   m_pianoItem = new PianoItem(0, 23);
+   m_pianoItem->setY(height * 1.2);
+   addItem(m_pianoItem);
+
+   clearNotes();
 }
 
 void FretboardScene::changeTonic(int tonic)
@@ -111,7 +117,7 @@ void FretboardScene::changeTonic(int tonic)
    {
       return;
    }
-   hideAllPoints();
+   clearNotes();
    m_tonic = tonic;
    for (int noteNumber_ = 0; noteNumber_ < m_isNoteChosen.size(); ++noteNumber_)
    {
@@ -122,6 +128,7 @@ void FretboardScene::changeTonic(int tonic)
          {
             it->show();
          }
+         m_pianoItem->setPressed(NoteLetter(noteNumber), true);
       }
    }
 }
@@ -138,19 +145,15 @@ void FretboardScene::changeNote(int note, bool add)
    {
       it->setVisible(add);
    }
+   m_pianoItem->setPressed(NoteLetter(realNote), add);
 }
 
-qreal FretboardScene::semitoneUp(qreal freq) {
+qreal FretboardScene::semitoneUp(qreal freq)
+{
    return freq * SEMITONE_RATIO;
 }
 
-bool FretboardScene::hasFretMarker(int fretNumber)
-{
-   constexpr uint32_t FRET_MARKS = (1<<3) | (1<<5) | (1<<7) | (1<<9) | (1<<15) | (1<<17) | (1<<19);
-   return FRET_MARKS & (1u << fretNumber);
-}
-
-void FretboardScene::hideAllPoints()
+void FretboardScene::clearNotes()
 {
    for (auto& v : m_noteToPoints)
    {
@@ -159,4 +162,5 @@ void FretboardScene::hideAllPoints()
          it->hide();
       }
    }
+   m_pianoItem->clearPressed();
 }

@@ -1,7 +1,7 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "FretboardScene.h"
-#include "GuitarNoteLetter.h"
+#include "NoteLetter.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -69,9 +69,9 @@ void MainWindow::on_comboBox_currentIndexChanged(int index)
 
 void MainWindow::updateLabels(int tonic)
 {
-   for (int i = 0; i < 12; ++i)
+   for (int i = 0; i < NoteLetter::count; ++i)
    {
-      m_labels[i]->setText(noteNames[(tonic + i) % 12]);
+      m_labels[i]->setText(NoteLetter(tonic + i).name());
    }
 }
 
