@@ -10,6 +10,10 @@
 #include <QString>
 #include <QFile>
 #include <QPushButton>
+#include <QDialog>
+#include <QTableWidget>
+#include <QHeaderView>
+#include <QPlainTextEdit>
 
 MainWindow::MainWindow(QWidget *parent)
    : QMainWindow(parent)
@@ -50,6 +54,29 @@ MainWindow::MainWindow(QWidget *parent)
    connect(ui->buttonGroup, &QButtonGroup::idClicked, this, [this](int noteNumber) {
       bool isNoteChosen = ui->buttonGroup->button(noteNumber)->isChecked();
       scene->changeNote(noteNumber, isNoteChosen);
+
+      QVector<int> currentMode = {};
+      for (int i = 0; i < m_checkboxes.size(); ++i)
+      {
+         if (m_checkboxes[i]->isChecked())
+         {
+            currentMode.append(i);
+         }
+      }
+      bool unknownMode = true;
+      for (const auto& modeName : m_modes.keys())
+      {
+         if (m_modes[modeName] == currentMode)
+         {
+            ui->modeLabel->setText(modeName);
+            unknownMode = false;
+            break;
+         }
+      }
+      if (unknownMode)
+      {
+         ui->modeLabel->setText("UnknownMode");
+      }
    });
 
    loadModes();
@@ -98,6 +125,7 @@ QMap<QString, QVector<int>> MainWindow::loadModesFromJson(const QJsonDocument& d
          notes.append(noteValue.toInt());
       }
 
+      m_sortedModeNames.push_back(name);
       modesMap[name] = notes;
       QPushButton* modeButton = new QPushButton(name, ui->modesGroupBox);
       ui->modesGroupBox->layout()->addWidget(modeButton);
@@ -121,6 +149,16 @@ void MainWindow::loadModes()
    }
 }
 
+QSet<NoteLetter> MainWindow::modeNotes(NoteLetter tonic, const QVector<int> &mode)
+{
+   QSet<NoteLetter> modeNotes;
+   for (auto distance : mode)
+   {
+      modeNotes.insert(tonic + distance);
+   }
+   return modeNotes;
+}
+
 
 void MainWindow::setMode(const QString& modeName)
 {
@@ -135,6 +173,7 @@ void MainWindow::setMode(const QString& modeName)
          scene->changeNote(noteIndex, true);
       }
    }
+   ui->modeLabel->setText(modeName);
 }
 
 
@@ -145,5 +184,130 @@ void MainWindow::on_pushButton_clicked()
       m_checkboxes[i]->setChecked(false);
       scene->changeNote(i, false);
    }
+   ui->modeLabel->setText("Empty");
+}
+
+
+void MainWindow::on_actionShowEqualModeTable_triggered()
+{
+    QDialog *dialog = new QDialog(this);
+    dialog->setWindowTitle("Equal Mode Table");
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+
+    auto modeNames = m_sortedModeNames;
+    modeNames.resize(7);
+
+    QSet<QSet<QPair<NoteLetter, int>>> equalTable;
+
+    for (int note = 0; note < NoteLetter::count; ++note)
+    {
+       for (int modeNumber = 0; modeNumber < modeNames.size(); ++modeNumber)
+       {
+          QSet<QPair<NoteLetter, int>> curSet;
+          auto notes = modeNotes(note, m_modes[modeNames[modeNumber]]);
+          curSet.insert({note, modeNumber});
+
+          for (int note = 0; note < NoteLetter::count; ++note)
+          {
+             for (int modeNumber = 0; modeNumber < modeNames.size(); ++modeNumber)
+             {
+                auto secondNotes = modeNotes(note, m_modes[modeNames[modeNumber]]);
+                if (notes == secondNotes)
+                {
+                   curSet.insert({note, modeNumber});
+                }
+             }
+          }
+
+          if (curSet.size() > 1)
+          {
+             equalTable.insert(curSet);
+          }
+       }
+    }
+
+   QList<QSet<QPair<NoteLetter, int>>> sortedTable = equalTable.values();
+
+   std::sort(
+      sortedTable.begin(),
+      sortedTable.end(),
+      [](const QSet<QPair<NoteLetter, int>>& a, const QSet<QPair<NoteLetter, int>>& b)
+      {
+         int minNoteA = 12;
+         int minNoteB = 12;
+
+         for (const auto& pair : a) {
+             if (int(pair.first) < minNoteA) {
+                 minNoteA = int(pair.first);
+             }
+         }
+
+         for (const auto& pair : b) {
+             if (int(pair.first) < minNoteB) {
+                 minNoteB = int(pair.first);
+             }
+         }
+
+         if (minNoteA != minNoteB) return minNoteA < minNoteB;
+
+         int minModeA = 7;
+         int minModeB = 7;
+
+         for (const auto& pair : a) {
+             if (int(pair.first) == minNoteA && pair.second < minModeA) {
+                 minModeA = pair.second;
+             }
+         }
+
+         for (const auto& pair : b) {
+             if (int(pair.first) == minNoteB && pair.second < minModeB) {
+                 minModeB = pair.second;
+             }
+         }
+
+         return minModeA < minModeB;
+      }
+   );
+
+   QString fullText;
+
+   for (const auto& set : sortedTable)
+   {
+      QStringList namedEntries;
+      QStringList numberedEntries;
+
+      QList<QPair<NoteLetter, int>> sortedPairs = set.values();
+      std::sort(sortedPairs.begin(), sortedPairs.end(),
+          [](const QPair<NoteLetter, int>& a, const QPair<NoteLetter, int>& b) {
+              if (a.first != b.first) return a.first < b.first;
+              return a.second < b.second;
+      });
+
+      for (const auto& pair : sortedPairs)
+      {
+          NoteLetter note = pair.first;
+          int modeIdx = pair.second;
+          QString modeName = modeNames[modeIdx];
+
+          namedEntries << QString("%1 (%2)").arg(note.name()).arg(modeName);
+
+          numberedEntries << QString("%1(%2)").arg(int(note)).arg(modeIdx);
+      }
+
+      fullText += namedEntries.join(" = ") + "\n";
+      fullText += numberedEntries.join(" = ") + "\n\n";
+   }
+
+
+   QPlainTextEdit *textEdit = new QPlainTextEdit(dialog);
+   textEdit->setPlainText(fullText);
+   textEdit->setReadOnly(true);
+   textEdit->setWordWrapMode(QTextOption::WordWrap);
+
+   QVBoxLayout *mainLayout = new QVBoxLayout(dialog);
+   mainLayout->addWidget(textEdit);
+
+   dialog->resize(800, 600);
+   dialog->show();
 }
 
